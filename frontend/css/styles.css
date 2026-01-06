@@ -1,0 +1,142 @@
+/* css/styles.css */
+:root {
+    --primary-color: #0d6efd;
+    --sidebar-width: 250px;
+    --header-height: 60px;
+}
+
+body {
+    background-color: #f4f6f9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow-x: hidden;
+}
+
+/* --- LOGIN SCREEN --- */
+#login-screen {
+    background: linear-gradient(135deg, #0d6efd 0%, #00d2ff 100%);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+}
+
+.login-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+}
+
+/* --- LAYOUT PRINCIPAL --- */
+#app-layout {
+    display: flex;
+    height: 100vh;
+    transition: all 0.3s;
+}
+
+/* Sidebar */
+#sidebar {
+    width: var(--sidebar-width);
+    background: #343a40;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100%;
+    transition: all 0.3s;
+    z-index: 1000;
+}
+
+#sidebar .brand {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    background: #212529;
+    border-bottom: 1px solid #4b545c;
+}
+
+#sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+#sidebar ul li a {
+    padding: 15px 20px;
+    display: block;
+    color: #c2c7d0;
+    text-decoration: none;
+    transition: 0.3s;
+    border-left: 3px solid transparent;
+}
+
+#sidebar ul li a:hover, #sidebar ul li a.active {
+    background: #495057;
+    color: white;
+    border-left-color: var(--primary-color);
+}
+
+#sidebar ul li a i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Content */
+#main-content {
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header Superior */
+header {
+    height: var(--header-height);
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+/* Area de Vistas */
+#views-container {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.section-view {
+    display: none; /* Oculto por defecto */
+    animation: fadeIn 0.4s;
+}
+
+.active-view {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tarjetas Dashboard */
+.stat-card {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+.stat-card:hover { transform: translateY(-5px); }
+.icon-box { font-size: 2rem; opacity: 0.8; }
