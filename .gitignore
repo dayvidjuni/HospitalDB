@@ -1,0 +1,23 @@
+# VS Code
+.vscode/
+
+# Compilados
+*.exe
+*.class
+*.out
+
+# Logs
+*.log
+
+# Sistema
+Thumbs.db
+.DS_Store
+
+# Node (si aplica)
+node_modules/
+
+# Java
+target/
+
+# Go
+bin/
