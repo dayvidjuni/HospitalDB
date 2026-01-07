@@ -45,6 +45,31 @@ if(MODO_SIMULACION) {
     console.warn("⚠️ SISTEMA CORRIENDO EN MODO SIMULACIÓN");
 }
 
+function showToast(message, title = '', type = 'info', delay = 4000) {
+    const container = document.getElementById('toast-container');
+    if(!container) return;
+    const toastId = `toast-${Date.now()}`;
+    container.insertAdjacentHTML('beforeend', `
+        <div id="${toastId}" class="toast toast-custom align-items-center" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="${delay}">
+          <div class="d-flex">
+            <div class="toast-body">
+              ${title ? '<strong>' + title + '</strong> ' : ''}${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+          </div>
+        </div>
+    `);
+    const el = document.getElementById(toastId);
+    const btoast = new bootstrap.Toast(el);
+    btoast.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+function toggleSidebarMobile() {
+    const s = document.getElementById('sidebar');
+    s.classList.toggle('show');
+}
+
 // ==========================================
 // --- FUNCIÓN HELPER: SMART FETCH ---
 // ==========================================
@@ -113,14 +138,14 @@ document.getElementById('formLogin').addEventListener('submit', (e) => {
     if (MOCK_USERS[u] && MOCK_USERS[u].pass === p) {
         // Validación de Rol
         if (MOCK_USERS[u].role !== rolEsperado) {
-            alert(`⚠️ Error de Rol: Este usuario no es ${rolEsperado.toUpperCase()}.`);
+            showToast(`Este usuario no es ${rolEsperado.toUpperCase()}.`, "Error", "danger");
             return;
         }
 
         currentUser = MOCK_USERS[u];
         iniciarSistema();
     } else {
-        alert("Usuario o contraseña incorrectos");
+        showToast("Usuario o contraseña incorrectos","Error","danger");
     }
 });
 
@@ -206,7 +231,7 @@ document.getElementById('formRegistroPublico').addEventListener('submit', async 
     await new Promise(r => setTimeout(r, 1000));
 
     // 4. Finalizar
-    alert("¡Cuenta Creada con Éxito!\n\nAhora inicie sesión con su DNI y Contraseña.");
+    showToast("Cuenta creada. Ahora inicie sesión con su DNI.","Éxito","success");
     mostrarLogin(); // Volver al login automáticamente
     
     // Rellenar el login para facilitar el acceso
@@ -276,11 +301,11 @@ function configurarPortalPaciente() {
 
 function intentarAgendar() {
     if (!currentUser.profileComplete) {
-        alert("⚠️ ACCIÓN BLOQUEADA\n\nPrimero debe completar sus datos personales.");
+        showToast("Primero debe completar sus datos personales.","Atención","danger");
         return;
     }
-    alert("Abriendo calendario de citas...");
-}
+    showToast("Abriendo calendario de citas...","Acción","info");
+} 
 
 // ==========================================
 // --- GESTIÓN DE PERSONAS Y REGISTRO ---
@@ -363,9 +388,9 @@ document.getElementById('formPersona').addEventListener('submit', async (e) => {
     let rolFinal = (modo === 'signup') ? 'paciente' : document.getElementById('p_rol').value;
 
     if (modo === 'signup' && (!passInput.value || passInput.value.length < 3)) {
-        alert("La contraseña debe tener al menos 3 caracteres.");
+        showToast("La contraseña debe tener al menos 3 caracteres.","Error","danger");
         return;
-    }
+    } 
 
     const nuevoUsuario = {
         id: Date.now(),
@@ -396,7 +421,7 @@ document.getElementById('formPersona').addEventListener('submit', async (e) => {
                 hora_inicio: document.getElementById('p_hora_inicio').value,
                 hora_fin: document.getElementById('p_hora_fin').value
             };
-            alert("✅ Usuario actualizado correctamente.");
+            showToast("Usuario actualizado correctamente.","Guardado","success");
         }
         usuarioEditandoID = null; // Limpiamos la variable para la próxima
     } else {
@@ -414,7 +439,7 @@ document.getElementById('formPersona').addEventListener('submit', async (e) => {
         };
         BD_REGISTROS.push(nuevo);
         MOCK_USERS[dni] = { pass: '123', role: rol, name: `${nombre} ${nuevo.apellido}` };
-        alert("✅ Nuevo usuario registrado.");
+        showToast("Nuevo usuario registrado.","Éxito","success");
     }
     // Crear credencial si es registro público
     if (modo === 'signup') {
@@ -442,12 +467,12 @@ document.getElementById('formPersona').addEventListener('submit', async (e) => {
     btn.disabled = false;
 
     if (modo === 'signup') {
-        alert("¡Cuenta Creada!\nUse su DNI para ingresar.");
+        showToast("Cuenta creada. Use su DNI para ingresar.","Éxito","success");
         document.getElementById('login_user').value = dni;
         document.getElementById('login_pass').value = '';
         document.getElementById('login_pass').focus();
     } else {
-        alert("Usuario registrado.");
+        showToast("Usuario registrado.","Éxito","success");
         if(currentUser && currentUser.role === 'admin') filtrarTabla('todos');
         if(modo === 'self') {
             currentUser.profileComplete = true;
@@ -498,7 +523,7 @@ function renderVistaMedico() {
     tbody.innerHTML = '';
     BD_CITAS.forEach(cita => {
         const rowClass = cita.estado === 'atendido' ? 'table-secondary text-muted' : '';
-        const btn = cita.estado === 'atendido' ? '<span class="badge bg-secondary">Fin</span>' : `<button class="btn btn-sm btn-primary" onclick="alert('Atendiendo...')">Atender</button>`;
+        const btn = cita.estado === 'atendido' ? '<span class="badge bg-secondary">Fin</span>' : `<button class="btn btn-sm btn-primary" onclick="showToast('Atendiendo...','Acción','info')">Atender</button>`;
         tbody.innerHTML += `<tr class="${rowClass}"><td>${cita.hora}</td><td>${cita.paciente}</td><td>${cita.motivo}</td><td>${cita.estado}</td><td class="text-end">${btn}</td></tr>`;
     });
 }
@@ -569,7 +594,7 @@ const BD_HISTORIAL = [
 function abrirModalCita() {
     // 1. Validar que tenga perfil completo
     if (!currentUser.profileComplete) {
-        alert("⚠️ ATENCIÓN\n\nAntes de agendar, debe completar sus datos personales en la alerta amarilla.");
+        showToast("Antes de agendar, complete sus datos personales.","Atención","danger");
         return;
     }
     
@@ -639,7 +664,7 @@ document.getElementById('formCitaPaciente').addEventListener('submit', async (e)
     BD_CITAS.push(nuevaCita);
     await new Promise(r => setTimeout(r, 1000)); // Espera dramática
 
-    alert(`¡CITA CONFIRMADA!\n\nEspecialidad: ${esp}\nMédico: ${doc}\nFecha: ${fecha} a las ${hora}`);
+    showToast(`Cita confirmada: ${esp} con ${doc} el ${fecha} a las ${hora}` ,"Cita","success");
     
     bootstrap.Modal.getInstance(document.getElementById('modalCitaPaciente')).hide();
     btn.innerText = txt; btn.disabled = false;
@@ -803,7 +828,7 @@ document.getElementById('formNuevaEvolucion').addEventListener('submit', (e) => 
     BD_HISTORIAL.push(nuevoRegistro);
 
     // Feedback visual
-    alert("✅ Evolución y Receta guardadas correctamente.");
+    showToast("Evolución y receta guardadas correctamente.","Guardado","success");
     document.getElementById('formNuevaEvolucion').reset();
     
     // Recargar la lista para ver lo nuevo ahí mismo

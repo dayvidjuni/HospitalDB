@@ -1,15 +1,19 @@
 /* css/styles.css */
 :root {
     --primary-color: #0d6efd;
+    --accent-color: #0dc5a0; /* Toque hospital (verde-agua) */
     --sidebar-width: 250px;
     --header-height: 60px;
-}
+    --content-bg: #f4f6f9;
+} 
 
 body {
-    background-color: #f4f6f9;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--content-bg);
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow-x: hidden;
-}
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+} 
 
 /* --- LOGIN SCREEN --- */
 #login-screen {
@@ -27,9 +31,10 @@ body {
     background: white;
     padding: 2rem;
     border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
+    border-left: 6px solid var(--accent-color);
 }
 
 /* --- LAYOUT PRINCIPAL --- */
@@ -59,8 +64,9 @@ body {
     justify-content: center;
     font-weight: bold;
     font-size: 1.2rem;
-    background: #212529;
-    border-bottom: 1px solid #4b545c;
+    background: linear-gradient(90deg, var(--accent-color), #0b8b8b);
+    color: white;
+    border-bottom: 1px solid rgba(0,0,0,0.15);
 }
 
 #sidebar ul {
@@ -81,8 +87,8 @@ body {
 #sidebar ul li a:hover, #sidebar ul li a.active {
     background: #495057;
     color: white;
-    border-left-color: var(--primary-color);
-}
+    border-left-color: var(--accent-color);
+} 
 
 #sidebar ul li a i {
     margin-right: 10px;
@@ -138,5 +144,28 @@ header {
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     transition: transform 0.2s;
 }
+
+/* Tipografía y cabeceras */
+h1,h2,h3,h4,h5 { font-weight: 600; }
+h3 { letter-spacing: 0.3px; }
 .stat-card:hover { transform: translateY(-5px); }
 .icon-box { font-size: 2rem; opacity: 0.8; }
+
+/* Responsive sidebar para móviles */
+@media (max-width: 767.98px) {
+    #sidebar {
+        transform: translateX(-100%);
+        left: 0;
+    }
+    #sidebar.show { transform: translateX(0); }
+    #main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    #login-screen { align-items: flex-start; padding-top: 30px; }
+}
+
+/* Toast custom */
+.toast-custom .toast-header { background: var(--accent-color); color: white; }
+.toast-custom .toast-body { background: white; color: #111; }
+.toast { min-width: 260px; }
