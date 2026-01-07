@@ -39,6 +39,46 @@ const MOCK_USERS = {
 };
 
 // --- INICIALIZACIÓN ---
+async function detectBackendAndInit() {
+    try {
+        const res = await fetch(`${API_URL}/status`);
+        if (res.ok) {
+            MODO_SIMULACION = false;
+            const devIndicator = document.getElementById('dev-mode-indicator');
+            if(devIndicator) devIndicator.classList.add('hidden');
+            showToast('Conectado al backend. Modo producción activado.','Conexión','success');
+
+            // If no medicos exist, run the seed endpoint (dev convenience)
+            try {
+                const medRes = await smartFetch(`${API_URL}/medicos`);
+                const medicos = await medRes.json();
+                if(!medicos || medicos.length === 0) {
+                    showToast('No se detectaron médicos. Ejecutando seed en backend...','Setup','info');
+                    await smartFetch(`${API_URL}/setup/seed`, { method: 'POST' });
+                    showToast('Seed ejecutado en backend. Datos demo creados.','Setup','success');
+                }
+            } catch (err) {
+                console.warn('No se pudo verificar médicos:', err.message || err);
+            }
+
+            return;
+        }
+    } catch (e) {
+        // Backend no disponible -> nos quedamos en simulación
+    }
+
+    // Si llegó aquí, no hay backend
+    MODO_SIMULACION = true;
+    const devIndicator = document.getElementById('dev-mode-indicator');
+    if(devIndicator) devIndicator.classList.remove('hidden');
+    showToast('No se detectó backend. Modo simulación activo.','Atención','warning');
+}
+
+// Ejecutar check al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    detectBackendAndInit();
+});
+
 if(MODO_SIMULACION) {
     const devIndicator = document.getElementById('dev-mode-indicator');
     if(devIndicator) devIndicator.classList.remove('hidden');
@@ -75,7 +115,14 @@ function toggleSidebarMobile() {
 // ==========================================
 async function smartFetch(url, options = {}) {
     if (!MODO_SIMULACION) {
-        return fetch(url, options);
+        options.headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+        const res = await fetch(url, options);
+        // Let caller handle non-ok responses via try/catch and .json()
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(err.error || res.statusText || 'Request failed');
+        }
+        return res;
     } else {
         return new Promise((resolve) => {
             console.log(`[SIMULACIÓN API] ${options.method || 'GET'} -> ${url}`, options.body || '');
@@ -128,24 +175,58 @@ function toggleAdminMode() {
     }
 }
 
-document.getElementById('formLogin').addEventListener('submit', (e) => {
+document.getElementById('formLogin').addEventListener('submit', async (e) => {
     e.preventDefault();
     const u = document.getElementById('login_user').value.toLowerCase().trim();
     const p = document.getElementById('login_pass').value;
 
     const rolEsperado = isAdminLogin ? 'admin' : document.getElementById('login_rol_selector').value;
 
-    if (MOCK_USERS[u] && MOCK_USERS[u].pass === p) {
-        // Validación de Rol
-        if (MOCK_USERS[u].role !== rolEsperado) {
-            showToast(`Este usuario no es ${rolEsperado.toUpperCase()}.`, "Error", "danger");
+    if (MODO_SIMULACION) {
+        if (MOCK_USERS[u] && MOCK_USERS[u].pass === p) {
+            // Validación de Rol
+            if (MOCK_USERS[u].role !== rolEsperado) {
+                showToast(`Este usuario no es ${rolEsperado.toUpperCase()}.`, "Error", "danger");
+                return;
+            }
+
+            currentUser = MOCK_USERS[u];
+            iniciarSistema();
+        } else {
+            showToast("Usuario o contraseña incorrectos","Error","danger");
+        }
+        return;
+    }
+
+    // En modo real, solo soportamos login por DNI (paciente) por ahora
+    try {
+        if (rolEsperado !== 'paciente') {
+            showToast('Por ahora solo se admite acceso de pacientes vía API.','Info','info');
             return;
         }
 
-        currentUser = MOCK_USERS[u];
-        iniciarSistema();
-    } else {
-        showToast("Usuario o contraseña incorrectos","Error","danger");
+        const res = await smartFetch(`${API_URL}/personas/search?q=${encodeURIComponent(u)}`);
+        const personas = await res.json();
+        const match = personas.find(p => p.numero_documento === u || p.numero_documento === String(Number(u)));
+        if (!match) {
+            showToast('Usuario no encontrado. Regístrese primero.','Error','danger');
+            return;
+        }
+
+        // Verificar si ya es paciente
+        try {
+            const pRes = await smartFetch(`${API_URL}/pacientes/persona/${match.persona_id}`);
+            const paciente = await pRes.json();
+            // Login exitoso (sin password real, solo demo)
+            currentUser = { name: `${match.nombres} ${match.apellidos}`, role: 'paciente', persona_id: match.persona_id, paciente_id: paciente.paciente_id, profileComplete: true };
+            iniciarSistema();
+        } catch (err) {
+            showToast('No se encontró registro de paciente para este usuario.','Error','danger');
+        }
+
+    } catch (error) {
+        console.error(error);
+        showToast('Error al iniciar sesión vía API.','Error','danger');
     }
 });
 
@@ -209,36 +290,71 @@ document.getElementById('formRegistroPublico').addEventListener('submit', async 
     btn.innerText = "Registrando...";
     btn.disabled = true;
 
-    // 3. Crear el objeto Usuario y Guardarlo en las listas simuladas
-    const nuevoUsuario = {
-        id: Date.now(),
-        rol: 'paciente', // Forzamos el rol
-        dni, nombre, apellido, ubigeo, telefono
-    };
+    if (MODO_SIMULACION) {
+        // 3. Crear el objeto Usuario y Guardarlo en las listas simuladas
+        const nuevoUsuario = {
+            id: Date.now(),
+            rol: 'paciente', // Forzamos el rol
+            dni, nombre, apellido, ubigeo, telefono
+        };
 
-    // Agregar a la "Base de datos" de la tabla
-    BD_REGISTROS.push(nuevoUsuario);
+        // Agregar a la "Base de datos" de la tabla
+        BD_REGISTROS.push(nuevoUsuario);
 
-    // Agregar al "Sistema de Login" (Para que puedas entrar)
-    MOCK_USERS[dni] = {
-        pass: pass,
-        role: 'paciente',
-        name: `${nombre} ${apellido}`,
-        profileComplete: true
-    };
+        // Agregar al "Sistema de Login" (Para que puedas entrar)
+        MOCK_USERS[dni] = {
+            pass: pass,
+            role: 'paciente',
+            name: `${nombre} ${apellido}`,
+            profileComplete: true
+        };
 
-    // Simular pequeña espera
-    await new Promise(r => setTimeout(r, 1000));
+        // Simular pequeña espera
+        await new Promise(r => setTimeout(r, 1000));
 
-    // 4. Finalizar
-    showToast("Cuenta creada. Ahora inicie sesión con su DNI.","Éxito","success");
-    mostrarLogin(); // Volver al login automáticamente
-    
-    // Rellenar el login para facilitar el acceso
-    document.getElementById('login_rol_selector').value = 'paciente';
-    document.getElementById('login_user').value = dni;
-    document.getElementById('login_pass').value = '';
-    
+        // 4. Finalizar
+        showToast("Cuenta creada. Ahora inicie sesión con su DNI.","Éxito","success");
+        mostrarLogin(); // Volver al login automáticamente
+        
+        // Rellenar el login para facilitar el acceso
+        document.getElementById('login_rol_selector').value = 'paciente';
+        document.getElementById('login_user').value = dni;
+        document.getElementById('login_pass').value = '';
+    } else {
+        try {
+            // 1) Crear persona
+            const personaPayload = {
+                tipo_documento_id: 1, // DNI
+                numero_documento: dni,
+                nombres: nombre,
+                apellidos: apellido,
+                telefono: telefono,
+                ubigeo_id: ubigeo || '150101'
+            };
+
+            const personaRes = await smartFetch(`${API_URL}/personas`, { method: 'POST', body: JSON.stringify(personaPayload) });
+            const personaJson = await personaRes.json();
+            const personaId = personaJson.persona_id;
+
+            // 2) Crear paciente ligado a persona
+            const pacienteRes = await smartFetch(`${API_URL}/pacientes`, { method: 'POST', body: JSON.stringify({ persona_id: personaId }) });
+            const pacienteJson = await pacienteRes.json();
+            const pacienteId = pacienteJson.paciente_id;
+
+            // 3) Guardar credenciales mínimas (solo para demo)
+            MOCK_USERS[dni] = { pass: pass, role: 'paciente', name: `${nombre} ${apellido}`, persona_id: personaId, paciente_id: pacienteId, profileComplete: true };
+
+            showToast('Cuenta creada y registrada en el sistema. Puede iniciar sesión.','Éxito','success');
+            mostrarLogin();
+            document.getElementById('login_rol_selector').value = 'paciente';
+            document.getElementById('login_user').value = dni;
+            document.getElementById('login_pass').value = '';
+        } catch (error) {
+            console.error(error);
+            showToast(error.message || 'Error al crear cuenta','Error','danger');
+        }
+    }
+
     btn.innerText = textoOriginal;
     btn.disabled = false;
 });
@@ -610,7 +726,9 @@ function abrirModalCita() {
     new bootstrap.Modal(document.getElementById('modalCitaPaciente')).show();
 }
 
-function filtrarDoctoresPorEspecialidad() {
+const MEDICO_MAP = {};
+
+async function filtrarDoctoresPorEspecialidad() {
     const esp = document.getElementById('cita_especialidad').value;
     const selectDoc = document.getElementById('cita_doctor');
     
@@ -622,17 +740,52 @@ function filtrarDoctoresPorEspecialidad() {
         return;
     }
 
-    // BUSCAR MÉDICOS EN NUESTRA BD FALSA
-    // (Filtramos usuarios que sean 'medico' y tengan esa 'especialidad')
-    const doctoresDisponibles = BD_REGISTROS.filter(u => u.rol === 'medico' && u.especialidad === esp);
+    if (MODO_SIMULACION) {
+        // BUSCAR MÉDICOS EN NUESTRA BD FALSA
+        const doctoresDisponibles = BD_REGISTROS.filter(u => u.rol === 'medico' && u.especialidad === esp);
 
-    if(doctoresDisponibles.length > 0) {
-        selectDoc.disabled = false;
-        doctoresDisponibles.forEach(doc => {
-            selectDoc.innerHTML += `<option value="${doc.nombre} ${doc.apellido}">${doc.nombre} ${doc.apellido}</option>`;
+        if(doctoresDisponibles.length > 0) {
+            selectDoc.disabled = false;
+            doctoresDisponibles.forEach(doc => {
+                selectDoc.innerHTML += `<option value="${doc.nombre} ${doc.apellido}">${doc.nombre} ${doc.apellido}</option>`;
+            });
+        } else {
+            selectDoc.innerHTML = '<option value="">No hay médicos disponibles</option>';
+            selectDoc.disabled = true;
+        }
+        return;
+    }
+
+    try {
+        const res = await smartFetch(`${API_URL}/medicos`);
+        const medicos = await res.json();
+        let found = false;
+        selectDoc.disabled = true;
+        medicos.forEach(med => {
+            // especialidades may come as JSON string or array
+            let espArr = [];
+            try { espArr = typeof med.especialidades === 'string' ? JSON.parse(med.especialidades) : med.especialidades || []; } catch (e) { espArr = med.especialidades || []; }
+            const match = espArr.find(e => e.nombre === esp);
+            if (match) {
+                const opt = document.createElement('option');
+                opt.value = med.medico_id;
+                opt.text = `${med.nombres} ${med.apellidos} - ${match.nombre}`;
+                opt.dataset.especialidadId = match.id || match.especialidad_id || '';
+                selectDoc.appendChild(opt);
+                MEDICO_MAP[med.medico_id] = med;
+                found = true;
+            }
         });
-    } else {
-        selectDoc.innerHTML = '<option value="">No hay médicos disponibles</option>';
+        if (found) {
+            selectDoc.disabled = false;
+        } else {
+            selectDoc.innerHTML = '<option value="">No hay médicos disponibles</option>';
+            selectDoc.disabled = true;
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('Error al cargar médicos.','Error','danger');
+        selectDoc.innerHTML = '<option value="">Error cargando médicos</option>';
         selectDoc.disabled = true;
     }
 }
@@ -650,60 +803,118 @@ document.getElementById('formCitaPaciente').addEventListener('submit', async (e)
     const txt = btn.innerText;
     btn.innerText = "Reservando..."; btn.disabled = true;
 
-    // SIMULAR GUARDADO EN BD
-    const nuevaCita = {
-        id: Date.now(),
-        hora: `${fecha} ${hora}`, // Formato simple para la demo
-        paciente: currentUser.name,
-        motivo: motivo,
-        estado: 'pendiente',
-        doctor_asignado: doc,
-        especialidad: esp
-    };
+    if (MODO_SIMULACION) {
+        // SIMULAR GUARDADO EN BD
+        const nuevaCita = {
+            id: Date.now(),
+            hora: `${fecha} ${hora}`, // Formato simple para la demo
+            paciente: currentUser.name,
+            motivo: motivo,
+            estado: 'pendiente',
+            doctor_asignado: doc,
+            especialidad: esp
+        };
 
-    BD_CITAS.push(nuevaCita);
-    await new Promise(r => setTimeout(r, 1000)); // Espera dramática
+        BD_CITAS.push(nuevaCita);
+        await new Promise(r => setTimeout(r, 1000)); // Espera dramática
 
-    showToast(`Cita confirmada: ${esp} con ${doc} el ${fecha} a las ${hora}` ,"Cita","success");
-    
-    bootstrap.Modal.getInstance(document.getElementById('modalCitaPaciente')).hide();
-    btn.innerText = txt; btn.disabled = false;
-    
-    // Si estuviéramos mostrando una lista de "Próximas citas", aquí la actualizaríamos
+        showToast(`Cita confirmada: ${esp} con ${doc} el ${fecha} a las ${hora}` ,"Cita","success");
+        
+        bootstrap.Modal.getInstance(document.getElementById('modalCitaPaciente')).hide();
+        btn.innerText = txt; btn.disabled = false;
+        
+        // Si estuviéramos mostrando una lista de "Próximas citas", aquí la actualizaríamos
+    } else {
+        // Cuando usamos API real
+        try {
+            if(!currentUser || !currentUser.paciente_id) {
+                showToast('Debe completar su perfil o iniciar sesión como paciente.','Atención','danger');
+                btn.innerText = txt; btn.disabled = false;
+                return;
+            }
+
+            const medicoId = parseInt(document.getElementById('cita_doctor').value);
+            const selectedOpt = document.getElementById('cita_doctor').selectedOptions[0];
+            const espId = selectedOpt ? selectedOpt.dataset.especialidadId : null;
+
+            const payload = {
+                paciente_id: currentUser.paciente_id,
+                medico_id: medicoId,
+                especialidad_id: espId,
+                fecha: fecha,
+                hora: hora,
+                motivo: motivo
+            };
+
+            const res = await smartFetch(`${API_URL}/citas`, { method: 'POST', body: JSON.stringify(payload) });
+            const json = await res.json();
+
+            showToast(`Cita confirmada: ${esp} con ${selectedOpt.text} el ${fecha} a las ${hora}` ,"Cita","success");
+            bootstrap.Modal.getInstance(document.getElementById('modalCitaPaciente')).hide();
+        } catch (error) {
+            console.error(error);
+            showToast(error.message || 'Error al reservar cita','Error','danger');
+        } finally {
+            btn.innerText = txt; btn.disabled = false;
+        }
+    }
 });
 
 // ==========================================
 // --- MOSTRAR HISTORIAL ---
 // ==========================================
 
-function cargarHistorialPaciente() {
-    // Buscamos en el historial usando el DNI del usuario actual (currentUser no tiene DNI en mock login, 
-    // así que usaremos el nombre o simularemos con el DNI del paciente de prueba '70251984' si coincide)
-    
-    // TRUCO PARA DEMO: Si el usuario es "Carlos Mamani", mostramos el historial de demo.
-    // En un sistema real usaríamos: currentUser.id
-    
+async function cargarHistorialPaciente() {
     const tbody = document.getElementById('tablaHistorialPaciente');
     if(!tbody) return;
     tbody.innerHTML = '';
 
-    // Filtrar historial (Simulación)
-    const misRegistros = BD_HISTORIAL; // En prod: .filter(h => h.paciente_id === currentUser.id)
-
-    if (misRegistros.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Aún no tienes historial médico.</td></tr>';
+    if (MODO_SIMULACION) {
+        const misRegistros = BD_HISTORIAL;
+        if (misRegistros.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Aún no tienes historial médico.</td></tr>';
+            return;
+        }
+        misRegistros.forEach(h => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${h.fecha}</td>
+                    <td><span class="badge bg-light text-dark border">${h.especialidad}</span></td>
+                    <td>${h.diagnostico}</td>
+                </tr>
+            `;
+        });
         return;
     }
 
-    misRegistros.forEach(h => {
-        tbody.innerHTML += `
-            <tr>
-                <td>${h.fecha}</td>
-                <td><span class="badge bg-light text-dark border">${h.especialidad}</span></td>
-                <td>${h.diagnostico}</td>
-            </tr>
-        `;
-    });
+    try {
+        if (!currentUser || !currentUser.paciente_id) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Perfil incompleto o no es paciente.</td></tr>';
+            return;
+        }
+
+        const res = await smartFetch(`${API_URL}/pacientes/${currentUser.paciente_id}/historial`);
+        const json = await res.json();
+
+        const registros = json.historial || [];
+        if (registros.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Aún no tienes historial médico.</td></tr>';
+            return;
+        }
+
+        registros.forEach(h => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${h.fecha}</td>
+                    <td><span class="badge bg-light text-dark border">${h.especialidad || h.nombre}</span></td>
+                    <td>${h.diagnostico || h.diagnostico || '-'}</td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error(error);
+        showToast('Error al cargar historial.','Error','danger');
+    }
 }
 
 // ==========================================

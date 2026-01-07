@@ -66,6 +66,18 @@ class PacienteController {
             res.status(500).json({ error: 'Error al obtener historial clínico' });
         }
     }
+
+    // GET /api/pacientes/persona/:persona_id
+    static async getByPersona(req, res) {
+        try {
+            const paciente = await PacienteModel.findByPersonaId(req.params.persona_id);
+            if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado para esa persona' });
+            res.json(paciente);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Error al buscar paciente por persona' });
+        }
+    }
 }
 
 module.exports = PacienteController;

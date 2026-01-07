@@ -7,6 +7,7 @@ const pacienteRoutes = require('./routes/pacienteRoutes');
 const medicoRoutes = require('./routes/medicoRoutes');
 const citaRoutes = require('./routes/citaRoutes');
 const atencionRoutes = require('./routes/atencionRoutes');
+const setupRoutes = require('./routes/setupRoutes');
 
 const app = express();
 
@@ -20,6 +21,9 @@ app.use('/api/pacientes', pacienteRoutes);
 app.use('/api/medicos', medicoRoutes);
 app.use('/api/citas', citaRoutes);
 app.use('/api/atenciones', atencionRoutes);
+
+// Dev-only setup endpoints (seed, status)
+app.use('/api/setup', setupRoutes);
 
 // Health Check
 app.get('/api/status', (req, res) => {

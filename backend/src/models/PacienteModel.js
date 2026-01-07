@@ -42,6 +42,21 @@ class PacienteModel {
         return rows[0];
     }
 
+    static async findByPersonaId(persona_id) {
+        const sql = `
+            SELECT 
+                pa.paciente_id,
+                pa.fecha_registro,
+                pa.tipo_sangre,
+                pe.*
+            FROM Paciente pa
+            JOIN Persona pe ON pa.persona_id = pe.persona_id
+            WHERE pa.persona_id = ?
+        `;
+        const [rows] = await db.execute(sql, [persona_id]);
+        return rows[0];
+    }
+
     static async getFullHistory(id) {
         // 1. Get Basic Patient Info
         const paciente = await this.findById(id);
