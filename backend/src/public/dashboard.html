@@ -1,1 +1,474 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏥 Dashboard Hospital</title>
+    <style>
+        /* ESTILOS INCLUIDOS DIRECTAMENTE - No necesita archivo CSS extra */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo h1 {
+            color: #333;
+            font-size: 1.8rem;
+        }
+        
+        .logo i {
+            font-size: 2rem;
+            color: #667eea;
+        }
+        
+        .time-display {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        /* TARJETAS DE ESTADÍSTICAS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s;
+            border-top: 5px solid #667eea;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .stat-card.red {
+            border-top-color: #ff4757;
+        }
+        
+        .stat-card.green {
+            border-top-color: #2ed573;
+        }
+        
+        .stat-card.orange {
+            border-top-color: #ffa502;
+        }
+        
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .stat-card.red .stat-icon {
+            color: #ff4757;
+        }
+        
+        .stat-card.green .stat-icon {
+            color: #2ed573;
+        }
+        
+        .stat-card.orange .stat-icon {
+            color: #ffa502;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .stat-title {
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        /* TABLA DE CITAS */
+        .table-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .table-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.in-progress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        /* HABITACIONES */
+        .rooms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+        }
+        
+        .room {
+            background: #eafaf1;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .room.occupied {
+            background: #ffeaea;
+        }
+        
+        .room:hover {
+            transform: scale(1.05);
+        }
+        
+        .room i {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #2ed573;
+        }
+        
+        .room.occupied i {
+            color: #ff4757;
+        }
+        
+        .room-number {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: white;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .rooms-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-hospital"></i>
+                <h1>Dashboard Hospitalario</h1>
+            </div>
+            <div class="time-display" id="currentTime">
+                Cargando hora...
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-user-injured"></i>
+                </div>
+                <div class="stat-number" id="pacientesCount">1,245</div>
+                <div class="stat-title">Pacientes Registrados</div>
+            </div>
+            
+            <div class="stat-card green">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-number" id="citasCount">42</div>
+                <div class="stat-title">Citas Hoy</div>
+            </div>
+            
+            <div class="stat-card orange">
+                <div class="stat-icon">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="stat-number" id="medicosCount">18</div>
+                <div class="stat-title">Médicos Activos</div>
+            </div>
+            
+            <div class="stat-card red">
+                <div class="stat-icon">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <div class="stat-number" id="camasCount">38/50</div>
+                <div class="stat-title">Camas Ocupadas</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h2><i class="fas fa-calendar-day"></i> Citas Programadas Hoy</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Hora</th>
+                        <th>Médico</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="citasTable">
+                    <!-- Las citas se cargarán con JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <h2><i class="fas fa-procedures"></i> Estado de Habitaciones</h2>
+            <div class="rooms-grid" id="roomsGrid">
+                <!-- Las habitaciones se cargarán con JavaScript -->
+            </div>
+        </div>
+
+        <footer>
+            <p>Sistema Hospitalario © 2024 | Datos de demostración | Última actualización: <span id="lastUpdate">--:--:--</span></p>
+        </footer>
+    </div>
+
+    <script>
+        // DATOS DE EJEMPLO - NO NECESITA CONEXIÓN A BD
+        const mockData = {
+            pacientes: 1245,
+            citasHoy: 42,
+            medicos: 18,
+            camas: { ocupadas: 38, total: 50 },
+            citas: [
+                { paciente: "Juan Pérez", hora: "09:00 AM", medico: "Dr. García", estado: "pendiente" },
+                { paciente: "María López", hora: "09:30 AM", medico: "Dra. Martínez", estado: "en progreso" },
+                { paciente: "Carlos Ruiz", hora: "10:15 AM", medico: "Dr. Fernández", estado: "completada" },
+                { paciente: "Ana Silva", hora: "11:00 AM", medico: "Dr. Rodríguez", estado: "pendiente" },
+                { paciente: "Pedro Gómez", hora: "11:45 AM", medico: "Dra. Sánchez", estado: "cancelada" }
+            ],
+            habitaciones: [
+                { numero: "201", estado: "ocupada" },
+                { numero: "202", estado: "disponible" },
+                { numero: "203", estado: "ocupada" },
+                { numero: "204", estado: "ocupada" },
+                { numero: "205", estado: "disponible" },
+                { numero: "206", estado: "ocupada" },
+                { numero: "207", estado: "disponible" },
+                { numero: "208", estado: "ocupada" },
+                { numero: "209", estado: "ocupada" },
+                { numero: "210", estado: "disponible" }
+            ]
+        };
+
+        // FUNCIONES PARA ACTUALIZAR LA VISTA
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('currentTime').textContent = timeStr;
+            document.getElementById('lastUpdate').textContent = timeStr;
+        }
+
+        function loadDashboardData() {
+            // Actualizar estadísticas
+            document.getElementById('pacientesCount').textContent = 
+                mockData.pacientes.toLocaleString();
+            document.getElementById('citasCount').textContent = mockData.citasHoy;
+            document.getElementById('medicosCount').textContent = mockData.medicos;
+            document.getElementById('camasCount').textContent = 
+                `${mockData.camas.ocupadas}/${mockData.camas.total}`;
+
+            // Actualizar tabla de citas
+            const citasTable = document.getElementById('citasTable');
+            citasTable.innerHTML = mockData.citas.map(cita => `
+                <tr>
+                    <td><strong>${cita.paciente}</strong></td>
+                    <td>${cita.hora}</td>
+                    <td>${cita.medico}</td>
+                    <td><span class="status ${cita.estado.replace(' ', '-')}">${cita.estado}</span></td>
+                </tr>
+            `).join('');
+
+            // Actualizar habitaciones
+            const roomsGrid = document.getElementById('roomsGrid');
+            roomsGrid.innerHTML = mockData.habitaciones.map(hab => `
+                <div class="room ${hab.estado === 'ocupada' ? 'occupied' : ''}">
+                    <i class="fas fa-bed"></i>
+                    <div class="room-number">${hab.numero}</div>
+                    <small>${hab.estado === 'ocupada' ? 'Ocupada' : 'Disponible'}</small>
+                </div>
+            `).join('');
+        }
+
+        // ANIMACIÓN: Cambiar números aleatoriamente (efecto visual)
+        function animateNumbers() {
+            const elements = {
+                pacientesCount: { min: 1200, max: 1300 },
+                citasCount: { min: 35, max: 50 },
+                medicosCount: { min: 15, max: 20 },
+                camasCount: { min: 30, max: 45 }
+            };
+
+            Object.keys(elements).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const current = parseInt(element.textContent.replace(/,/g, ''));
+                    const target = Math.floor(Math.random() * 
+                        (elements[id].max - elements[id].min + 1)) + elements[id].min;
+                    
+                    // Animación suave
+                    let start = current;
+                    const duration = 1000;
+                    const startTime = Date.now();
+                    
+                    const updateNumber = () => {
+                        const elapsed = Date.now() - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        
+                        // Easing function
+                        const easeOut = 1 - Math.pow(1 - progress, 3);
+                        const value = Math.floor(start + (target - start) * easeOut);
+                        
+                        element.textContent = id === 'pacientesCount' 
+                            ? value.toLocaleString() 
+                            : id === 'camasCount' 
+                                ? `${value}/${mockData.camas.total}`
+                                : value;
+                        
+                        if (progress < 1) {
+                            requestAnimationFrame(updateNumber);
+                        }
+                    };
+                    
+                    updateNumber();
+                }
+            });
+        }
+
+        // INICIALIZAR
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            loadDashboardData();
+            
+            // Actualizar reloj cada segundo
+            setInterval(updateClock, 1000);
+            
+            // Cambiar números cada 10 segundos (efecto visual)
+            setInterval(animateNumbers, 10000);
+            
+            // Simular actualización de datos cada 30 segundos
+            setInterval(() => {
+                console.log('Simulando actualización de datos...');
+                updateClock();
+            }, 30000);
+            
+            // Botón de actualización manual (si se quiere agregar)
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'r' || e.key === 'R') {
+                    animateNumbers();
+                    console.log('Datos actualizados manualmente');
+                }
+            });
+        });
+
+        // Hacer funciones accesibles desde consola para pruebas
+        window.reloadDashboard = loadDashboardData;
+        window.animateNumbers = animateNumbers;
+        console.log('Dashboard listo! Usa reloadDashboard() o animateNumbers() en la consola para pruebas.');
+    </script>
+</body>
+</html>
